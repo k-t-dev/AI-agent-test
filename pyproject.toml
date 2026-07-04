@@ -1,0 +1,22 @@
+[project]
+name = "production-ai-agent"
+version = "1.0.0"
+description = "Production-oriented OpenAI multi-agent and MCP service"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "httpx>=0.28,<1",
+  "mcp[cli]>=1.9,<2",
+  "openai-agents>=0.2,<1",
+  "pydantic>=2.10,<3",
+  "pyyaml>=6,<7",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "pytest-asyncio>=0.25,<1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+

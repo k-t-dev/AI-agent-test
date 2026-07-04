@@ -1,0 +1,29 @@
+services:
+  mcp:
+    build: .
+    command: python mcp_server.py
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8790
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8790:8790"
+    restart: unless-stopped
+
+  api:
+    build: .
+    command: python main.py
+    env_file:
+      - .env.local
+    environment:
+      API_HOST: 0.0.0.0
+      PORT: 8787
+      MCP_SERVER_URL: http://mcp:8790/mcp
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8787:8787"
+    depends_on:
+      - mcp
+    restart: unless-stopped

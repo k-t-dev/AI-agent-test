@@ -1,0 +1,61 @@
+application:
+  name: enterprise-ai-agent
+  environment: ${APP_ENV:-development}
+  api_host: ${API_HOST:-127.0.0.1}
+  api_port: ${PORT:-8787}
+
+openai:
+  model: ${OPENAI_MODEL:-gpt-5.4-mini}
+  max_turns: 12
+  tracing_enabled: true
+
+mcp:
+  server_name: enterprise-tools
+  url: ${MCP_SERVER_URL:-http://127.0.0.1:8790/mcp}
+  stateless_http: true
+  json_response: true
+  timeout_seconds: 20
+  tools:
+    allowlist:
+      - search_policy
+      - draft_ticket
+    blocklist:
+      - raw_data_export
+      - delete_ticket
+    approval_required:
+      - draft_ticket
+
+agents:
+  supervisor:
+    name: Supervisor Agent
+    instructions: |
+      あなたは企業向けAIエージェントのSupervisorです。ユーザーの依頼を分析し、
+      Research AgentとAction Agentへ必要な作業だけを委任してください。
+      回答には根拠となる規程IDを含め、根拠がなければ推測しないでください。
+      更新操作は必ず承認中断を通し、承認前に実行済みと表現しないでください。
+  research:
+    name: Research Agent
+    instructions: |
+      社内規程の調査担当です。search_policyだけを使用し、取得した規程ID、名称、本文を
+      正確にSupervisorへ返してください。根拠のない補完は禁止です。
+  action:
+    name: Action Agent
+    instructions: |
+      業務操作担当です。ユーザーが明示的に作成を希望した場合のみdraft_ticketを使ってください。
+      draft_ticketは人間承認が必要です。承認されるまで実行結果を作らないでください。
+  review:
+    name: Review Agent
+    instructions: |
+      回答と操作計画をレビューし、PII、根拠不足、権限不足、未承認の更新操作を検出してください。
+
+security:
+  default_role: employee
+  permitted_roles:
+    - employee
+    - manager
+    - finance
+    - admin
+  rate_limit_per_minute: 20
+  pii_masking: true
+  audit_retention: 5000
+
