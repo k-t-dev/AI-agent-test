@@ -15,45 +15,95 @@ Browser (HTML/CSS/JavaScript)
 ### システム構造図
 
 ```mermaid
-flowchart LR
-    U["社員・承認者"] --> LOGIN["ログイン画面<br/>HttpOnly Session + CSRF"]
-    LOGIN --> UI["JavaScript画面<br/>index.html"]
-    UI --> API["FastAPI<br/>main.py"]
+flowchart TB
+    subgraph USERS["利用者"]
+        EMP["一般社員<br/>検索・下書き要求"]
+        APPROVER["Manager / Finance<br/>承認・監査"]
+    end
 
-    API --> SEC["認証・認可<br/>RBAC + ABAC<br/>tenant / role / department / clearance"]
-    API --> SUP["Supervisor Agent<br/>OpenAI Agents SDK"]
-    SEC --> CTX["信頼済みUser Context<br/>モデル入力から分離"]
-    CTX --> SUP
+    subgraph FRONTEND["JavaScript UI"]
+        LOGIN["ログイン画面"]
+        CHAT["Agent実行画面"]
+        QUEUE["承認キュー"]
+    end
 
-    SUP --> RES["Research Agent<br/>規程調査"]
-    SUP --> ACT["Action Agent<br/>業務操作"]
-    SUP --> REV["Review Agent<br/>安全性検査"]
+    subgraph API["FastAPI Security Boundary : 8787"]
+        AUTH["認証<br/>PBKDF2 + 署名Session<br/>HttpOnly / SameSite Cookie"]
+        CSRF["CSRF検証"]
+        AUTHZ["RBAC + ABAC<br/>tenant / role / department<br/>clearance / scope"]
+        RATELIMIT["Rate Limit + PII Masking"]
+        CONTEXT["信頼済みUser Context<br/>ユーザー入力から分離"]
+        APPROVAL_API["承認API<br/>同一tenant + approval role"]
+    end
 
-    RES --> KMCPC["Knowledge MCP Client<br/>Streamable HTTP"]
-    ACT --> TMCPC["Ticket MCP Client<br/>Streamable HTTP"]
-    KMCPC --> TOKEN["短寿命MCP Token<br/>署名・期限・scope"]
-    TMCPC --> TOKEN
-    TOKEN --> KMCP["Knowledge MCP Server<br/>mcp_knowledge_server.py : 8790"]
-    TOKEN --> TMCP["Ticket MCP Server<br/>mcp_ticket_server.py : 8791"]
+    subgraph AGENTS["OpenAI Agents SDK"]
+        SUP["Supervisor Agent<br/>振り分け・停止・統合"]
+        RES["Research Agent<br/>規程調査のみ"]
+        ACT["Action Agent<br/>業務操作のみ"]
+        REV["Review Agent<br/>権限・PII・根拠検査"]
+        OAI["OpenAI API<br/>gpt-5.4-mini"]
+    end
 
-    KMCP --> SEARCH["search_policy<br/>規程検索・読み取り専用"]
-    TMCP --> DRAFT["draft_ticket<br/>チケット下書き・承認必須"]
-    SEARCH --> POLICY[("policies.json")]
-    DRAFT --> TICKET[("tickets.json")]
+    subgraph MCPAUTH["MCP Authentication Boundary"]
+        META["tool_meta_resolver"]
+        TOKEN["短寿命署名MCP Token<br/>sub / tenant / role / department<br/>clearance / scope / run_id"]
+        VERIFY["各MCPで再検証<br/>署名 / audience / 期限 / scope"]
+        HITL{"Agents SDK<br/>Human Approval"}
+    end
 
-    ACT --> GATE{"人間承認が必要？"}
-    GATE -->|"承認待ち"| STATE[("pending_runs.json<br/>RunState永続化")]
-    STATE --> UI
-    UI -->|"承認"| API
-    GATE -->|"承認済み"| DRAFT
+    subgraph KNOWLEDGE["Knowledge MCP : 8790"]
+        KMCP["mcp_knowledge_server.py"]
+        SEARCH["search_policy<br/>読み取り専用"]
+        ROWFILTER["行レベル制限<br/>tenant / department<br/>clearance / scope"]
+    end
 
-    API --> AUDIT[("audit.json<br/>監査ログ")]
-    SUP --> OAI["OpenAI API<br/>gpt-5.4-mini"]
+    subgraph TICKETING["Ticket MCP : 8791"]
+        TMCP["mcp_ticket_server.py"]
+        DRAFT["draft_ticket<br/>更新操作"]
+    end
 
-    YAML["agents.yml<br/>モデル・Agent・MCP<br/>Tool権限・運用設定"] --> API
-    YAML --> SUP
-    YAML --> KMCP
-    YAML --> TMCP
+    subgraph DATA["永続データ"]
+        USERS_YML[("users.yml<br/>ユーザー・権限属性")]
+        POLICY[("policies.json<br/>規程・公開条件")]
+        STATE[("pending_runs.json<br/>RunState")]
+        TICKET[("tickets.json<br/>本人・tenant付き")]
+        AUDIT[("audit.json<br/>認証・検索・承認・実行")]
+        CONFIG[("agents.yml<br/>Agent・MCP・Security設定")]
+    end
+
+    EMP --> LOGIN
+    APPROVER --> LOGIN
+    LOGIN --> AUTH
+    USERS_YML --> AUTH
+    AUTH --> CHAT
+    AUTH --> QUEUE
+    CHAT --> CSRF --> AUTHZ --> RATELIMIT --> CONTEXT
+    CONTEXT --> SUP
+    SUP --> OAI
+    SUP --> RES
+    SUP --> ACT
+    SUP --> REV
+
+    RES --> META
+    ACT --> META
+    CONTEXT --> META
+    META --> TOKEN --> VERIFY
+    VERIFY --> KMCP --> SEARCH --> ROWFILTER --> POLICY
+    VERIFY --> HITL
+    HITL -->|"承認待ち"| STATE
+    STATE --> QUEUE
+    QUEUE --> APPROVAL_API
+    APPROVAL_API -->|"承認済みRunStateを再開"| HITL
+    HITL -->|"許可"| TMCP --> DRAFT --> TICKET
+
+    AUTH --> AUDIT
+    ROWFILTER --> AUDIT
+    APPROVAL_API --> AUDIT
+    DRAFT --> AUDIT
+    CONFIG --> AUTHZ
+    CONFIG --> SUP
+    CONFIG --> KMCP
+    CONFIG --> TMCP
 ```
 
 処理は「ログイン → FastAPIで認証・認可 → Supervisor Agent → 専門Agent → MCPで再認可 → 業務データ」の順に進みます。更新操作は人間承認で一度停止し、承認後に保存済みの`RunState`から再開します。
