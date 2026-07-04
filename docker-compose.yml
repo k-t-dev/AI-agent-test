@@ -1,7 +1,7 @@
 services:
-  mcp:
+  knowledge-mcp:
     build: .
-    command: python mcp_server.py
+    command: python mcp_knowledge_server.py
     environment:
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8790
@@ -9,6 +9,18 @@ services:
       - ./data:/app/data
     ports:
       - "8790:8790"
+    restart: unless-stopped
+
+  ticket-mcp:
+    build: .
+    command: python mcp_ticket_server.py
+    environment:
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8791
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "8791:8791"
     restart: unless-stopped
 
   api:
@@ -19,11 +31,13 @@ services:
     environment:
       API_HOST: 0.0.0.0
       PORT: 8787
-      MCP_SERVER_URL: http://mcp:8790/mcp
+      KNOWLEDGE_MCP_URL: http://knowledge-mcp:8790/mcp
+      TICKET_MCP_URL: http://ticket-mcp:8791/mcp
     volumes:
       - ./data:/app/data
     ports:
       - "8787:8787"
     depends_on:
-      - mcp
+      - knowledge-mcp
+      - ticket-mcp
     restart: unless-stopped

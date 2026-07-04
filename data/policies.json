@@ -2,13 +2,31 @@
   {
     "id": "EXP-TRAVEL-004",
     "title": "出張時のタクシー利用",
+    "tenant_id": "acme-jp",
+    "departments": ["*"],
+    "minimum_clearance": 1,
+    "required_scope": "policy:read",
     "keywords": ["出張", "タクシー", "経費", "領収書", "深夜"],
     "body": "出張先でのタクシー代は、深夜移動、公共交通機関がない場合、または安全上の理由がある場合に精算できます。領収書と利用理由の記載が必要です。申請期限は利用日の翌月末です。"
   },
   {
     "id": "EXP-MEAL-002",
     "title": "出張時の食事代",
+    "tenant_id": "acme-jp",
+    "departments": ["*"],
+    "minimum_clearance": 1,
+    "required_scope": "policy:read",
     "keywords": ["出張", "食事", "経費", "上限"],
     "body": "出張時の食事代は日当の範囲に含まれます。取引先との会食は事前承認と参加者の記録が必要です。"
+  },
+  {
+    "id": "FIN-AUDIT-009",
+    "title": "経理監査時の証憑確認",
+    "tenant_id": "acme-jp",
+    "departments": ["finance"],
+    "minimum_clearance": 3,
+    "required_scope": "policy:finance",
+    "keywords": ["経理", "監査", "証憑", "機密"],
+    "body": "経理監査の証憑は経理部の権限保有者だけが閲覧できます。取得と参照はすべて監査ログへ記録します。"
   }
 ]

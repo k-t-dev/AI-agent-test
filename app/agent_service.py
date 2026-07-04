@@ -6,8 +6,9 @@ from typing import Any
 from uuid import uuid4
 
 from agents import Agent, RunState, Runner
-from agents.mcp import MCPServerStreamableHttp
+from agents.mcp import MCPServerStreamableHttp, MCPToolMetaContext
 
+from app.auth import AuthManager
 from app.config import Settings
 from app.security import mask_pii
 from app.storage import JsonStore
@@ -16,35 +17,46 @@ from app.storage import JsonStore
 @dataclass
 class AgentRuntime:
     supervisor: Agent
-    mcp_server: MCPServerStreamableHttp
+    mcp_servers: list[MCPServerStreamableHttp]
 
 
 class AgentService:
     def __init__(self, settings: Settings, store: JsonStore) -> None:
         self.settings = settings
         self.store = store
+        self.auth = AuthManager(settings)
+
+    def _resolve_mcp_meta(self, context: MCPToolMetaContext) -> dict[str, str] | None:
+        run_context = context.run_context.context or {}
+        user = run_context.get("user")
+        if not user:
+            return None
+        return {"auth_token": self.auth.issue_mcp_token(user, run_context.get("run_id"))}
 
     def _runtime(self) -> AgentRuntime:
         cfg = self.settings
-        approvals = {name: "always" for name in cfg.mcp.tools.approval_required}
-        approvals.update({name: "never" for name in cfg.mcp.tools.allowlist if name not in approvals})
-        server = MCPServerStreamableHttp(
-            name=cfg.mcp.server_name,
-            params={"url": cfg.mcp.url, "timeout": cfg.mcp.timeout_seconds},
-            require_approval=approvals,
-            cache_tools_list=True,
-        )
+        servers: dict[str, MCPServerStreamableHttp] = {}
+        for server_id, server_cfg in cfg.mcp.servers.items():
+            approvals = {name: "always" for name in server_cfg.tools.approval_required}
+            approvals.update({name: "never" for name in server_cfg.tools.allowlist if name not in approvals})
+            servers[server_id] = MCPServerStreamableHttp(
+                name=server_cfg.server_name,
+                params={"url": server_cfg.url, "timeout": server_cfg.timeout_seconds},
+                require_approval=approvals,
+                cache_tools_list=True,
+                tool_meta_resolver=self._resolve_mcp_meta,
+            )
         research = Agent(
             name=cfg.agents["research"].name,
             instructions=cfg.agents["research"].instructions,
             model=cfg.openai.model,
-            mcp_servers=[server],
+            mcp_servers=[servers["knowledge"]],
         )
         action = Agent(
             name=cfg.agents["action"].name,
             instructions=cfg.agents["action"].instructions,
             model=cfg.openai.model,
-            mcp_servers=[server],
+            mcp_servers=[servers["ticketing"]],
         )
         review = Agent(
             name=cfg.agents["review"].name,
@@ -61,14 +73,29 @@ class AgentService:
                 review.as_tool(tool_name="review_plan", tool_description="回答と操作計画を安全性レビューする"),
             ],
         )
-        return AgentRuntime(supervisor=supervisor, mcp_server=server)
+        return AgentRuntime(supervisor=supervisor, mcp_servers=list(servers.values()))
+
+    async def _connect(self, runtime: AgentRuntime) -> None:
+        connected: list[MCPServerStreamableHttp] = []
+        try:
+            for server in runtime.mcp_servers:
+                await server.connect()
+                connected.append(server)
+        except Exception:
+            for server in reversed(connected):
+                await server.cleanup()
+            raise
+
+    async def _cleanup(self, runtime: AgentRuntime) -> None:
+        for server in reversed(runtime.mcp_servers):
+            await server.cleanup()
 
     async def start(self, user_input: str, user: dict[str, str]) -> dict[str, Any]:
         run_id = str(uuid4())
         safe_input = mask_pii(user_input)
         self.store.audit(run_id, "Supervisor Agent", "accepted", {"user": user, "input": safe_input})
         runtime = self._runtime()
-        await runtime.mcp_server.connect()
+        await self._connect(runtime)
         try:
             result = await Runner.run(
                 runtime.supervisor,
@@ -95,30 +122,38 @@ class AgentService:
                     "state": result.to_state().to_string(),
                     "createdAt": datetime.now(UTC).isoformat(),
                     "agentVersion": "1.0.0",
+                    "tenantId": user["tenant_id"],
+                    "requestedBy": user["id"],
                 })
                 self.store.audit(run_id, "OpenAI Agents SDK", "approval_required", {
                     "tools": [item.name for item in result.interruptions]
                 })
+                await self._cleanup(runtime)
             else:
-                await runtime.mcp_server.cleanup()
+                await self._cleanup(runtime)
                 self.store.audit(run_id, "Supervisor Agent", "completed", {"answer": response["answer"]})
             return response
         except Exception:
-            await runtime.mcp_server.cleanup()
+            await self._cleanup(runtime)
             self.store.audit(run_id, "Supervisor Agent", "failed", {"reason": "agent_execution_failed"})
             raise
 
-    async def approve(self, run_id: str, approver: str) -> dict[str, Any]:
+    async def approve(self, run_id: str, approver: dict[str, Any]) -> dict[str, Any]:
         pending = next((row for row in self.store.read("pending_runs.json") if row["runId"] == run_id), None)
         if not pending:
             raise KeyError("承認待ちの実行がありません")
+        if pending["tenantId"] != approver["tenant_id"]:
+            raise PermissionError("tenant boundary violation")
         runtime = self._runtime()
-        await runtime.mcp_server.connect()
+        await self._connect(runtime)
         try:
             state = await RunState.from_string(runtime.supervisor, pending["state"])
             for interruption in state.get_interruptions():
                 state.approve(interruption)
-            self.store.audit(run_id, "Human Approver", "approved", {"approver": approver})
+            self.store.audit(run_id, "Human Approver", "approved", {
+                "approverId": approver["id"],
+                "role": approver["role"],
+            })
             result = await Runner.run(runtime.supervisor, state, max_turns=self.settings.openai.max_turns)
             if result.interruptions:
                 self.store.upsert("pending_runs.json", "runId", {
@@ -134,7 +169,7 @@ class AgentService:
                 "status": "completed",
                 "answer": str(result.final_output),
                 "sources": [],
-                "timeline": [{"at": datetime.now(UTC).isoformat(), "agent": "Human Approver", "status": "approved", "message": f"{approver}が承認しました。"}],
+                "timeline": [{"at": datetime.now(UTC).isoformat(), "agent": "Human Approver", "status": "approved", "message": f"{approver['display_name']}が承認しました。"}],
             }
         finally:
-            await runtime.mcp_server.cleanup()
+            await self._cleanup(runtime)

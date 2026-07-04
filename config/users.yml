@@ -1,0 +1,38 @@
+users:
+  - id: employee-001
+    email: employee@example.com
+    display_name: 営業 一郎
+    password_hash: pbkdf2_sha256$210000$employee-salt-2026$9c40ecbb73cb771f61741f131e3c6ed813f40feb4cefe017a4e7dfa50a8451e9
+    tenant_id: acme-jp
+    role: employee
+    department: sales
+    clearance: 1
+    scopes:
+      - policy:read
+      - ticket:draft
+  - id: manager-001
+    email: manager@example.com
+    display_name: 営業 部長
+    password_hash: pbkdf2_sha256$210000$manager-salt-2026$5e05085281fd4a713bd353de5eef833c04287ab58ee906b5d29456f4637717da
+    tenant_id: acme-jp
+    role: manager
+    department: sales
+    clearance: 2
+    scopes:
+      - policy:read
+      - ticket:draft
+      - ticket:approve
+  - id: finance-001
+    email: finance@example.com
+    display_name: 経理 担当
+    password_hash: pbkdf2_sha256$210000$finance-salt-2026$af03309c99526a585c329a0b762cdca4d5f1c51e7ae05f2d52f6a6a51dcb5872
+    tenant_id: acme-jp
+    role: finance
+    department: finance
+    clearance: 3
+    scopes:
+      - policy:read
+      - policy:finance
+      - ticket:draft
+      - ticket:approve
+      - audit:read

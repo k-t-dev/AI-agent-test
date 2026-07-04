@@ -40,6 +40,82 @@
         line-height: 1.6;
       }
 
+      [hidden] { display: none !important; }
+
+      .login-shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+      }
+
+      .login-panel {
+        width: min(420px, 100%);
+        padding: 28px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .login-panel h1 {
+        font-size: 28px;
+        line-height: 1.2;
+      }
+
+      .login-panel p {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .login-form {
+        display: grid;
+        gap: 14px;
+        margin-top: 22px;
+      }
+
+      .login-form label {
+        display: grid;
+        gap: 6px;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .login-form input {
+        min-height: 44px;
+        width: 100%;
+        border: 1px solid #aab6c5;
+        border-radius: 6px;
+        padding: 9px 11px;
+        color: var(--ink);
+        background: #fff;
+        font: inherit;
+      }
+
+      .login-error {
+        min-height: 22px;
+        color: var(--red);
+        font-size: 13px;
+      }
+
+      .account-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .account-bar strong { color: var(--ink); }
+
       main {
         max-width: 1220px;
         margin: 0 auto;
@@ -603,6 +679,24 @@
         margin-top: 12px;
       }
 
+      .approval-queue {
+        display: grid;
+        gap: 7px;
+        margin-top: 16px;
+      }
+
+      .approval-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 9px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        font-size: 12px;
+      }
+
       .demo-button {
         min-height: 40px;
         border: 1px solid var(--accent);
@@ -754,7 +848,25 @@
     </style>
   </head>
   <body>
-    <main>
+    <section id="login-shell" class="login-shell" aria-labelledby="login-title">
+      <div class="login-panel">
+        <div class="eyebrow">Enterprise Agent</div>
+        <h1 id="login-title">ログイン</h1>
+        <p>組織アカウントでAIエージェントへ接続します。</p>
+        <form id="login-form" class="login-form">
+          <label>メールアドレス<input id="login-email" type="email" autocomplete="username" required></label>
+          <label>パスワード<input id="login-password" type="password" autocomplete="current-password" minlength="8" required></label>
+          <button class="demo-button" type="submit">ログイン</button>
+          <div id="login-error" class="login-error" role="alert"></div>
+        </form>
+      </div>
+    </section>
+
+    <main id="application" hidden>
+      <div class="account-bar">
+        <span id="account-label"></span>
+        <button id="logout-button" class="demo-button secondary" type="button">ログアウト</button>
+      </div>
       <section class="hero" aria-labelledby="page-title">
         <div class="hero-main">
           <div class="eyebrow">結論</div>
@@ -1093,6 +1205,7 @@
               <button id="run-button" class="demo-button" type="button">Agentを実行</button>
               <button id="approve-button" class="demo-button secondary" type="button" disabled>承認して続行</button>
             </div>
+            <div id="approval-queue" class="approval-queue"></div>
           </div>
 
           <div class="demo-output" aria-live="polite">
@@ -1112,7 +1225,32 @@
       const sources = document.querySelector("#source-list");
       const runtimeDot = document.querySelector("#runtime-dot");
       const runtimeLabel = document.querySelector("#runtime-label");
+      const loginShell = document.querySelector("#login-shell");
+      const application = document.querySelector("#application");
+      const loginForm = document.querySelector("#login-form");
+      const loginError = document.querySelector("#login-error");
+      const accountLabel = document.querySelector("#account-label");
+      const logoutButton = document.querySelector("#logout-button");
+      const approvalQueue = document.querySelector("#approval-queue");
       let currentRunId = null;
+      let csrfToken = null;
+      let currentUser = null;
+
+      function showLogin() {
+        csrfToken = null;
+        currentUser = null;
+        loginShell.hidden = false;
+        application.hidden = true;
+      }
+
+      function showApplication(authData) {
+        csrfToken = authData.csrfToken;
+        const user = authData.user;
+        currentUser = user;
+        accountLabel.textContent = `${user.display_name} / ${user.role} / ${user.department}`;
+        loginShell.hidden = true;
+        application.hidden = false;
+      }
 
       function render(run) {
         currentRunId = run.id;
@@ -1137,15 +1275,71 @@
           row.append(agent, message);
           return row;
         }));
-        approveButton.disabled = !waiting;
+        approveButton.disabled = !waiting || !currentUser?.scopes.includes("ticket:approve");
+      }
+
+      async function loadApprovals() {
+        const rows = await request("/api/approvals");
+        approvalQueue.replaceChildren(...rows.map((row) => {
+          const item = document.createElement("div");
+          item.className = "approval-item";
+          const label = document.createElement("span");
+          label.textContent = `承認待ち ${row.runId.slice(0, 8)} / ${row.requestedBy}`;
+          const button = document.createElement("button");
+          button.className = "demo-button secondary";
+          button.type = "button";
+          button.textContent = "選択";
+          button.addEventListener("click", () => {
+            currentRunId = row.runId;
+            approveButton.disabled = false;
+            summary.textContent = `実行 ${row.runId.slice(0, 8)} を承認対象に選択しました。`;
+          });
+          item.append(label, button);
+          return item;
+        }));
       }
 
       async function request(url, options) {
-        const response = await fetch(url, options);
+        const response = await fetch(url, { credentials: "same-origin", ...options });
         const body = await response.json();
-        if (!response.ok) throw new Error(body.detail || body.error || "処理に失敗しました");
+        if (!response.ok) {
+          if (response.status === 401) showLogin();
+          throw new Error(body.detail || body.error || "処理に失敗しました");
+        }
         return body;
       }
+
+      loginForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        loginError.textContent = "";
+        const submit = loginForm.querySelector("button[type='submit']");
+        submit.disabled = true;
+        try {
+          const authData = await request("/api/auth/login", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              email: document.querySelector("#login-email").value,
+              password: document.querySelector("#login-password").value
+            })
+          });
+          showApplication(authData);
+          await checkRuntime();
+          await loadApprovals();
+        } catch (error) {
+          loginError.textContent = error.message;
+        } finally {
+          submit.disabled = false;
+        }
+      });
+
+      logoutButton.addEventListener("click", async () => {
+        try {
+          await request("/api/auth/logout", { method: "POST", headers: { "X-CSRF-Token": csrfToken } });
+        } finally {
+          showLogin();
+        }
+      });
 
       async function checkRuntime() {
         try {
@@ -1154,7 +1348,7 @@
           const ready = health.openai === "configured";
           runtimeLabel.textContent = ready
             ? `稼働中: OpenAI ${health.model} / MCP接続 / Agent ${health.agents}体`
-            : `API起動済み: OpenAIキーはテスト用ダミー / MCP ${health.mcp}`;
+            : `API起動済み: OpenAIキーはテスト用ダミー / MCP ${Object.keys(health.mcp).length}台`;
           runButton.disabled = !ready;
         } catch {
           runtimeDot.className = "runtime-dot offline";
@@ -1170,8 +1364,8 @@
         try {
           render(await request("/api/runs", {
             method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ input: input.value, user: { id: "employee-001", role: "employee", department: "sales" } })
+            headers: { "content-type": "application/json", "X-CSRF-Token": csrfToken },
+            body: JSON.stringify({ input: input.value })
           }));
         } catch (error) {
           summary.textContent = error.message;
@@ -1185,15 +1379,23 @@
         try {
           render(await request(`/api/runs/${currentRunId}/approve`, {
             method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ approver: "demo-manager" })
+            headers: { "X-CSRF-Token": csrfToken }
           }));
+          await loadApprovals();
         } catch (error) {
           summary.textContent = error.message;
         }
       });
 
-      checkRuntime();
+      (async function initialize() {
+        try {
+          showApplication(await request("/api/auth/me"));
+          await checkRuntime();
+          await loadApprovals();
+        } catch {
+          showLogin();
+        }
+      })();
     </script>
   </body>
 </html>

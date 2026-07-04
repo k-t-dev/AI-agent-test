@@ -46,6 +46,15 @@ class OpenAIConfig(BaseModel):
     tracing_enabled: bool = True
 
 
+class AuthConfig(BaseModel):
+    session_secret: str
+    mcp_token_secret: str
+    session_minutes: int = 480
+    mcp_token_minutes: int = 5
+    cookie_secure: bool = False
+    cookie_name: str = "agent_session"
+
+
 class MCPToolsConfig(BaseModel):
     allowlist: list[str]
     blocklist: list[str]
@@ -61,6 +70,10 @@ class MCPConfig(BaseModel):
     tools: MCPToolsConfig
 
 
+class MCPRegistryConfig(BaseModel):
+    servers: dict[str, MCPConfig]
+
+
 class AgentDefinition(BaseModel):
     name: str
     instructions: str
@@ -72,12 +85,14 @@ class SecurityConfig(BaseModel):
     rate_limit_per_minute: int = 20
     pii_masking: bool = True
     audit_retention: int = 5000
+    approval_roles: list[str]
 
 
 class Settings(BaseModel):
     application: dict[str, Any]
+    auth: AuthConfig
     openai: OpenAIConfig
-    mcp: MCPConfig
+    mcp: MCPRegistryConfig
     agents: dict[str, AgentDefinition]
     security: SecurityConfig
     root: Path = Field(default=ROOT, exclude=True)
@@ -92,5 +107,9 @@ class Settings(BaseModel):
 def get_settings() -> Settings:
     load_local_env()
     raw = yaml.safe_load((ROOT / "config" / "agents.yml").read_text(encoding="utf-8"))
-    return Settings.model_validate(_expand(raw))
-
+    settings = Settings.model_validate(_expand(raw))
+    if settings.application["environment"] == "production":
+        secrets_to_check = (settings.auth.session_secret, settings.auth.mcp_token_secret)
+        if any(secret.startswith("development-") or len(secret) < 32 for secret in secrets_to_check):
+            raise ValueError("production requires independent authentication secrets of at least 32 characters")
+    return settings

@@ -4,26 +4,46 @@ application:
   api_host: ${API_HOST:-127.0.0.1}
   api_port: ${PORT:-8787}
 
+auth:
+  session_secret: ${SESSION_SECRET:-development-session-secret-change-in-production}
+  mcp_token_secret: ${MCP_AUTH_SECRET:-development-mcp-secret-change-in-production}
+  session_minutes: 480
+  mcp_token_minutes: 5
+  cookie_secure: ${COOKIE_SECURE:-false}
+  cookie_name: agent_session
+
 openai:
   model: ${OPENAI_MODEL:-gpt-5.4-mini}
   max_turns: 12
   tracing_enabled: true
 
 mcp:
-  server_name: enterprise-tools
-  url: ${MCP_SERVER_URL:-http://127.0.0.1:8790/mcp}
-  stateless_http: true
-  json_response: true
-  timeout_seconds: 20
-  tools:
-    allowlist:
-      - search_policy
-      - draft_ticket
-    blocklist:
-      - raw_data_export
-      - delete_ticket
-    approval_required:
-      - draft_ticket
+  servers:
+    knowledge:
+      server_name: knowledge-tools
+      url: ${KNOWLEDGE_MCP_URL:-http://127.0.0.1:8790/mcp}
+      stateless_http: true
+      json_response: true
+      timeout_seconds: 20
+      tools:
+        allowlist:
+          - search_policy
+        blocklist:
+          - raw_data_export
+        approval_required: []
+    ticketing:
+      server_name: ticket-tools
+      url: ${TICKET_MCP_URL:-http://127.0.0.1:8791/mcp}
+      stateless_http: true
+      json_response: true
+      timeout_seconds: 20
+      tools:
+        allowlist:
+          - draft_ticket
+        blocklist:
+          - delete_ticket
+        approval_required:
+          - draft_ticket
 
 agents:
   supervisor:
@@ -58,4 +78,7 @@ security:
   rate_limit_per_minute: 20
   pii_masking: true
   audit_retention: 5000
-
+  approval_roles:
+    - manager
+    - finance
+    - admin
