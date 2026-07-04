@@ -1,0 +1,256 @@
+[
+  {
+    "id": "0af616db-ed36-4158-82ef-c48589a258ac",
+    "at": "2026-07-04T07:08:33.176Z",
+    "runId": "977568ca-5876-4d1e-8eff-f8e967958a33",
+    "actor": "Supervisor Agent",
+    "event": "accepted",
+    "detail": {
+      "message": "依頼を受け付け、低リスクの規程検索と承認対象の下書き作成に分解しました。"
+    }
+  },
+  {
+    "id": "19bb0393-392e-45fb-8a0f-b7e0a1b6a7cf",
+    "at": "2026-07-04T07:08:33.176Z",
+    "runId": "977568ca-5876-4d1e-8eff-f8e967958a33",
+    "actor": "Planner Agent",
+    "event": "planned",
+    "detail": {
+      "message": "Research Agentへ規程検索、Action Agentへ下書き候補の準備を割り当てました。"
+    }
+  },
+  {
+    "id": "7405f672-0627-4068-b632-08695d7ed1d2",
+    "at": "2026-07-04T07:08:33.179Z",
+    "runId": "977568ca-5876-4d1e-8eff-f8e967958a33",
+    "actor": "Policy Engine",
+    "event": "authorized",
+    "detail": {
+      "message": "RBAC/ABAC確認済み: employee / sales"
+    }
+  },
+  {
+    "id": "45c4e490-d8e6-4866-a00a-575719be64f3",
+    "at": "2026-07-04T07:08:33.181Z",
+    "runId": "977568ca-5876-4d1e-8eff-f8e967958a33",
+    "actor": "MCP:company-knowledge",
+    "event": "tool_called",
+    "detail": {
+      "tool": "search_policy",
+      "count": 2
+    }
+  },
+  {
+    "id": "cd40f945-1a00-44e6-b962-12385e338406",
+    "at": "2026-07-04T07:08:33.182Z",
+    "runId": "977568ca-5876-4d1e-8eff-f8e967958a33",
+    "actor": "Research Agent",
+    "event": "researched",
+    "detail": {
+      "message": "2件の社内規程をMCP経由で取得しました。"
+    }
+  },
+  {
+    "id": "e336b866-0027-48d3-b1ed-be6071426a39",
+    "at": "2026-07-04T07:08:33.182Z",
+    "runId": "977568ca-5876-4d1e-8eff-f8e967958a33",
+    "actor": "Review Agent",
+    "event": "reviewed",
+    "detail": {
+      "message": "PII、Tool allowlist、入力スキーマを確認しました。書き込み操作のため承認が必要です。"
+    }
+  },
+  {
+    "id": "dd254cf5-5764-4821-a9b4-3f2b9d7df1f0",
+    "at": "2026-07-04T07:08:33.182Z",
+    "runId": "977568ca-5876-4d1e-8eff-f8e967958a33",
+    "actor": "Supervisor Agent",
+    "event": "approval_required",
+    "detail": {
+      "message": "draft_ticketは副作用があるため、人間承認まで実行を停止しました。"
+    }
+  },
+  {
+    "id": "b6f0ed60-e0ab-402f-805b-d0927fc186ae",
+    "at": "2026-07-04T07:08:48.065Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Supervisor Agent",
+    "event": "accepted",
+    "detail": {
+      "message": "依頼を受け付け、低リスクの規程検索と承認対象の下書き作成に分解しました。"
+    }
+  },
+  {
+    "id": "67d1bdf9-6a9e-448a-aa42-577eaf6d3e85",
+    "at": "2026-07-04T07:08:48.067Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Planner Agent",
+    "event": "planned",
+    "detail": {
+      "message": "Research Agentへ規程検索、Action Agentへ下書き候補の準備を割り当てました。"
+    }
+  },
+  {
+    "id": "e3d75a32-7030-42d1-aa67-0cc2dd69feec",
+    "at": "2026-07-04T07:08:48.067Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Policy Engine",
+    "event": "authorized",
+    "detail": {
+      "message": "RBAC/ABAC確認済み: employee / sales"
+    }
+  },
+  {
+    "id": "a3ee4b57-44d6-4b8b-a2bf-1f405916d76f",
+    "at": "2026-07-04T07:08:48.068Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "MCP:company-knowledge",
+    "event": "tool_called",
+    "detail": {
+      "tool": "search_policy",
+      "count": 2
+    }
+  },
+  {
+    "id": "9df9e7fd-e5b5-4331-8915-bb4d13d29d54",
+    "at": "2026-07-04T07:08:48.069Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Research Agent",
+    "event": "researched",
+    "detail": {
+      "message": "2件の社内規程をMCP経由で取得しました。"
+    }
+  },
+  {
+    "id": "37a0454f-4e26-49b7-b1ba-1cf0f620c0a9",
+    "at": "2026-07-04T07:08:48.069Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Review Agent",
+    "event": "reviewed",
+    "detail": {
+      "message": "PII、Tool allowlist、入力スキーマを確認しました。書き込み操作のため承認が必要です。"
+    }
+  },
+  {
+    "id": "7a08d9b4-b588-4c43-a8b9-1cfbe9f5fcf9",
+    "at": "2026-07-04T07:08:48.070Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Supervisor Agent",
+    "event": "approval_required",
+    "detail": {
+      "message": "draft_ticketは副作用があるため、人間承認まで実行を停止しました。"
+    }
+  },
+  {
+    "id": "86a17757-86c0-4dc3-be6a-da3aa967c85e",
+    "at": "2026-07-04T07:08:48.538Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Human Approver",
+    "event": "approved",
+    "detail": {
+      "message": "demo-managerが下書き作成を承認しました。"
+    }
+  },
+  {
+    "id": "696652ff-7f44-4150-b2a8-b5f7a18a212a",
+    "at": "2026-07-04T07:08:48.538Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "MCP:ticketing",
+    "event": "tool_called",
+    "detail": {
+      "tool": "draft_ticket",
+      "ticketId": "EXP-0001"
+    }
+  },
+  {
+    "id": "43be6239-56a3-4fb6-b696-bd64faa630fd",
+    "at": "2026-07-04T07:08:48.539Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Action Agent",
+    "event": "executed",
+    "detail": {
+      "message": "MCP経由でチケットEXP-0001を下書き作成しました。"
+    }
+  },
+  {
+    "id": "7557cf37-99c0-48d0-be8b-fb17309f0582",
+    "at": "2026-07-04T07:08:48.539Z",
+    "runId": "fb788428-78c1-40e4-ab8e-28554c31d582",
+    "actor": "Supervisor Agent",
+    "event": "completed",
+    "detail": {
+      "message": "操作結果と監査ログを確認し、実行を完了しました。"
+    }
+  },
+  {
+    "id": "ace190e8-cedf-4c33-888a-7094410337b1",
+    "at": "2026-07-04T07:08:53.656Z",
+    "runId": "034f9b8b-e356-4614-9a00-40e027109950",
+    "actor": "Supervisor Agent",
+    "event": "accepted",
+    "detail": {
+      "message": "依頼を受け付け、低リスクの規程検索と承認対象の下書き作成に分解しました。"
+    }
+  },
+  {
+    "id": "5aca2567-d878-4d2c-ae9a-0bbb14e0e8a7",
+    "at": "2026-07-04T07:08:53.657Z",
+    "runId": "034f9b8b-e356-4614-9a00-40e027109950",
+    "actor": "Planner Agent",
+    "event": "planned",
+    "detail": {
+      "message": "Research Agentへ規程検索、Action Agentへ下書き候補の準備を割り当てました。"
+    }
+  },
+  {
+    "id": "1b1f0e01-b811-40e0-a8e8-b8ec72d18b6d",
+    "at": "2026-07-04T07:08:53.659Z",
+    "runId": "034f9b8b-e356-4614-9a00-40e027109950",
+    "actor": "Policy Engine",
+    "event": "authorized",
+    "detail": {
+      "message": "RBAC/ABAC確認済み: employee / sales"
+    }
+  },
+  {
+    "id": "0ec92bce-f281-4b52-acf4-59f4c86db2c7",
+    "at": "2026-07-04T07:08:53.660Z",
+    "runId": "034f9b8b-e356-4614-9a00-40e027109950",
+    "actor": "MCP:company-knowledge",
+    "event": "tool_called",
+    "detail": {
+      "tool": "search_policy",
+      "count": 2
+    }
+  },
+  {
+    "id": "a8835f18-a81e-4855-a6b6-87b70deeee4e",
+    "at": "2026-07-04T07:08:53.660Z",
+    "runId": "034f9b8b-e356-4614-9a00-40e027109950",
+    "actor": "Research Agent",
+    "event": "researched",
+    "detail": {
+      "message": "2件の社内規程をMCP経由で取得しました。"
+    }
+  },
+  {
+    "id": "22ae880f-fd0c-4187-aff0-64e0aec0b6c7",
+    "at": "2026-07-04T07:08:53.661Z",
+    "runId": "034f9b8b-e356-4614-9a00-40e027109950",
+    "actor": "Review Agent",
+    "event": "reviewed",
+    "detail": {
+      "message": "PII、Tool allowlist、入力スキーマを確認しました。書き込み操作のため承認が必要です。"
+    }
+  },
+  {
+    "id": "61384ae6-8bd2-47c1-b5d8-14f84edff586",
+    "at": "2026-07-04T07:08:53.661Z",
+    "runId": "034f9b8b-e356-4614-9a00-40e027109950",
+    "actor": "Supervisor Agent",
+    "event": "approval_required",
+    "detail": {
+      "message": "draft_ticketは副作用があるため、人間承認まで実行を停止しました。"
+    }
+  }
+]

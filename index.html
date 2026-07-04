@@ -1,0 +1,1196 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>本番想定AIエージェント設計図デモ</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7fb;
+        --ink: #172033;
+        --muted: #5f6b7a;
+        --line: #ccd5e0;
+        --panel: #ffffff;
+        --panel-soft: #f9fbfd;
+        --accent: #2563eb;
+        --accent-soft: #e8f0ff;
+        --green: #15803d;
+        --green-soft: #e9f7ee;
+        --orange: #b45309;
+        --orange-soft: #fff3df;
+        --red: #b91c1c;
+        --red-soft: #feeceb;
+        --purple: #7c3aed;
+        --purple-soft: #f1ebff;
+        --shadow: 0 16px 45px rgba(31, 41, 55, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans",
+          "Yu Gothic", "Noto Sans JP", sans-serif;
+        line-height: 1.6;
+      }
+
+      main {
+        max-width: 1220px;
+        margin: 0 auto;
+        padding: 32px 22px 56px;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+        gap: 20px;
+        align-items: stretch;
+        margin-bottom: 20px;
+      }
+
+      .hero-main,
+      .quick-panel,
+      .section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .hero-main {
+        padding: 28px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0;
+        margin-bottom: 12px;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      h1 {
+        max-width: 820px;
+        font-size: clamp(30px, 5vw, 56px);
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        max-width: 780px;
+        margin-top: 16px;
+        color: var(--muted);
+        font-size: 17px;
+      }
+
+      .hero-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: #174ea6;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .quick-panel {
+        padding: 22px;
+      }
+
+      .quick-panel h2 {
+        font-size: 18px;
+        margin-bottom: 14px;
+      }
+
+      .check-list {
+        display: grid;
+        gap: 10px;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+      }
+
+      .check-list li {
+        display: grid;
+        grid-template-columns: 24px minmax(0, 1fr);
+        gap: 9px;
+        align-items: start;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .check {
+        display: inline-grid;
+        place-items: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--green-soft);
+        color: var(--green);
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .section {
+        margin-top: 20px;
+        padding: 24px;
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        align-items: flex-start;
+        margin-bottom: 18px;
+      }
+
+      .section-title h2 {
+        font-size: 24px;
+        line-height: 1.25;
+      }
+
+      .section-title p {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .badge {
+        flex: 0 0 auto;
+        padding: 8px 11px;
+        border-radius: 999px;
+        background: var(--panel-soft);
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .architecture {
+        display: grid;
+        grid-template-columns: minmax(160px, 0.8fr) minmax(260px, 1.2fr) minmax(170px, 0.8fr);
+        gap: 14px;
+        align-items: stretch;
+      }
+
+      .lane {
+        display: grid;
+        gap: 12px;
+      }
+
+      .node {
+        min-height: 104px;
+        padding: 15px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-soft);
+        position: relative;
+      }
+
+      .node strong {
+        display: block;
+        font-size: 15px;
+        line-height: 1.3;
+      }
+
+      .node span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .node.primary {
+        background: var(--accent-soft);
+        border-color: #9bbcff;
+      }
+
+      .node.safe {
+        background: var(--green-soft);
+        border-color: #98d5aa;
+      }
+
+      .node.warn {
+        background: var(--orange-soft);
+        border-color: #f2c879;
+      }
+
+      .node.audit {
+        background: var(--purple-soft);
+        border-color: #c8b5ff;
+      }
+
+      .center-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .orchestrator {
+        min-height: 220px;
+        padding: 18px;
+        border: 2px solid var(--accent);
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .orchestrator strong {
+        display: block;
+        font-size: 20px;
+      }
+
+      .orchestrator p {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .mini-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .mini {
+        min-height: 70px;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .mini small {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .connector-note {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .connector-note div {
+        padding: 10px;
+        border-radius: 8px;
+        background: #eef2f7;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(92px, 1fr));
+        gap: 10px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+
+      .step {
+        min-width: 112px;
+        min-height: 132px;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+        position: relative;
+      }
+
+      .step:not(:last-child)::after {
+        content: ">";
+        position: absolute;
+        top: 47px;
+        right: -10px;
+        width: 20px;
+        height: 20px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--ink);
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 900;
+        z-index: 1;
+      }
+
+      .num {
+        display: inline-grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 900;
+        margin-bottom: 10px;
+      }
+
+      .step strong {
+        display: block;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+
+      .step span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .guardrails {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .agent-mesh {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .agent-card {
+        min-height: 128px;
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+      }
+
+      .agent-card strong {
+        display: block;
+        font-size: 14px;
+        line-height: 1.3;
+      }
+
+      .agent-card span {
+        display: block;
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .guard {
+        min-height: 156px;
+        padding: 15px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-soft);
+      }
+
+      .guard h3 {
+        font-size: 16px;
+        line-height: 1.3;
+      }
+
+      .guard p {
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .guard ul {
+        margin: 12px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .scenario {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+        gap: 14px;
+      }
+
+      .dialogue {
+        display: grid;
+        gap: 10px;
+      }
+
+      .bubble {
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+      }
+
+      .bubble.user {
+        border-color: #9bbcff;
+        background: var(--accent-soft);
+      }
+
+      .bubble.agent {
+        border-color: #98d5aa;
+        background: var(--green-soft);
+      }
+
+      .bubble.approval {
+        border-color: #f2c879;
+        background: var(--orange-soft);
+      }
+
+      .bubble strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 13px;
+      }
+
+      .bubble p {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .decision-table {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      table {
+        width: 100%;
+        min-width: 520px;
+        border-collapse: collapse;
+        background: #ffffff;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 13px;
+      }
+
+      th {
+        background: #eef2f7;
+        color: #334155;
+        font-weight: 900;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .status {
+        display: inline-flex;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .status.ok {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+
+      .status.wait {
+        background: var(--orange-soft);
+        color: var(--orange);
+      }
+
+      .status.block {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .legend-item {
+        min-height: 58px;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .legend-item strong {
+        display: block;
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .demo-layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+        gap: 18px;
+      }
+
+      .demo-control,
+      .demo-output {
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+        padding: 18px;
+        border-radius: 8px;
+      }
+
+      .demo-control label,
+      .demo-control strong {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 14px;
+      }
+
+      .demo-control textarea {
+        width: 100%;
+        min-height: 120px;
+        resize: vertical;
+        border: 1px solid #aab6c5;
+        border-radius: 6px;
+        padding: 12px;
+        color: var(--ink);
+        background: #fff;
+        font: inherit;
+      }
+
+      .demo-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .demo-button {
+        min-height: 40px;
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        padding: 8px 14px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .demo-button.secondary {
+        background: #fff;
+        color: var(--accent);
+      }
+
+      .demo-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+
+      .runtime-status {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .runtime-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--orange);
+      }
+
+      .runtime-dot.online { background: var(--green); }
+      .runtime-dot.offline { background: var(--red); }
+
+      .run-summary {
+        padding: 12px;
+        border-left: 4px solid var(--accent);
+        background: #fff;
+        font-size: 14px;
+      }
+
+      .run-timeline {
+        display: grid;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .run-event {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 10px;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        font-size: 13px;
+      }
+
+      .run-event strong { color: var(--accent); }
+
+      .source-list {
+        margin: 12px 0 0;
+        padding-left: 20px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 920px) {
+        main {
+          padding: 20px 14px 38px;
+        }
+
+        .hero,
+        .architecture,
+        .scenario,
+        .demo-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .guardrails {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .agent-mesh {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .connector-note,
+        .legend {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .section-header {
+          display: grid;
+        }
+      }
+
+      @media (max-width: 560px) {
+        h1 {
+          font-size: 32px;
+        }
+
+        .hero-main,
+        .quick-panel,
+        .section {
+          padding: 18px;
+        }
+
+        .mini-grid,
+        .guardrails,
+        .agent-mesh,
+        .connector-note,
+        .legend {
+          grid-template-columns: 1fr;
+        }
+
+        .flow {
+          grid-template-columns: 1fr;
+          overflow-x: visible;
+        }
+
+        .step {
+          min-width: 0;
+          min-height: 108px;
+        }
+
+        .step:not(:last-child)::after {
+          content: "v";
+          top: auto;
+          right: calc(50% - 10px);
+          bottom: -10px;
+        }
+
+        .tag {
+          white-space: normal;
+        }
+
+        .run-event {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-main">
+          <div class="eyebrow">結論</div>
+          <h1 id="page-title">本番想定AIエージェントは「勝手に実行しない業務OS」として設計する</h1>
+          <p class="lead">
+            LLMは判断を支援し、実行はAgent OrchestratorとTool Gatewayが制御します。
+            社内データ検索、業務SaaS連携、承認、監査ログを分けることで、デモでも本番の安全境界を説明できます。
+          </p>
+          <div class="hero-tags" aria-label="主要な設計要素">
+            <span class="tag">RAGで社内知識を検索</span>
+            <span class="tag">RBAC / ABACで権限制御</span>
+            <span class="tag">approval_requiredで人間承認</span>
+            <span class="tag">MCPでTool接続を標準化</span>
+            <span class="tag">マルチエージェントで役割分担</span>
+            <span class="tag">監査ログで追跡可能</span>
+          </div>
+        </div>
+
+        <aside class="quick-panel" aria-labelledby="quick-title">
+          <h2 id="quick-title">理由</h2>
+          <ul class="check-list">
+            <li><span class="check">✓</span><span>LLMに直接業務システムを触らせず、許可されたToolだけを渡す。</span></li>
+            <li><span class="check">✓</span><span>個人情報や機密情報は検索・表示・実行の前後でマスキングする。</span></li>
+            <li><span class="check">✓</span><span>更新・送信・作成などの副作用は、人間承認後にだけ実行する。</span></li>
+            <li><span class="check">✓</span><span>全判断とTool結果を監査ログに残し、あとから説明できる状態にする。</span></li>
+          </ul>
+        </aside>
+      </section>
+
+      <section class="section" aria-labelledby="architecture-title">
+        <div class="section-header">
+          <div class="section-title">
+            <h2 id="architecture-title">全体アーキテクチャ図</h2>
+            <p>User UI、Agent Orchestrator、Supervisor Agent、専門Agent、LLM、RAG、MCP、業務SaaS、監査/監視を分離します。</p>
+          </div>
+          <span class="badge">本番構成の見取り図</span>
+        </div>
+
+        <div class="architecture">
+          <div class="lane" aria-label="利用者側">
+            <div class="node primary">
+              <strong>User UI</strong>
+              <span>チャット、社内ポータル、Slack、Teams。入力と承認操作の窓口。</span>
+            </div>
+            <div class="node safe">
+              <strong>認証 / 認可</strong>
+              <span>SSO、RBAC、ABACでユーザー・部署・場所・役職を確認。</span>
+            </div>
+          </div>
+
+          <div class="center-stack">
+            <div class="orchestrator">
+              <strong>Agent Orchestrator</strong>
+              <p>
+                依頼を分解し、必要な情報検索とTool候補を決めます。
+                LLMの出力をそのまま実行せず、実行前チェックと承認待ちを必ず通します。
+              </p>
+              <div class="mini-grid">
+                <div class="mini">Intent Router<small>質問か操作かを判定</small></div>
+                <div class="mini">Supervisor Control<small>全体進行と停止判断を監督</small></div>
+                <div class="mini">Agent Planner<small>専門Agentへ仕事を分配</small></div>
+                <div class="mini">Policy Engine<small>allowlist / blocklistを照合</small></div>
+                <div class="mini">MCP Broker<small>Tool定義と接続先を管理</small></div>
+                <div class="mini">Approval Gate<small>approval_requiredを処理</small></div>
+                <div class="mini">Audit Writer<small>判断と結果を保存</small></div>
+              </div>
+            </div>
+            <div class="connector-note">
+              <div>User UI -> Orchestrator</div>
+              <div>Orchestrator -> 専門Agent</div>
+              <div>Agent / MCP -> Tool Gateway</div>
+            </div>
+          </div>
+
+          <div class="lane" aria-label="外部連携側">
+            <div class="node">
+              <strong>LLM</strong>
+              <span>要約、分類、文章生成。権限判断と実行判断は外側で制御。</span>
+            </div>
+            <div class="node">
+              <strong>RAG / Vector DB</strong>
+              <span>社内規程、FAQ、過去チケット、ナレッジを検索。</span>
+            </div>
+            <div class="node safe">
+              <strong>MCP Server群</strong>
+              <span>Tool仕様、認証、入出力スキーマを標準化して業務システムへ接続。</span>
+            </div>
+            <div class="node warn">
+              <strong>Tool Gateway</strong>
+              <span>MCP経由のCRM、経費、Jira、メール、DB操作を一元管理。</span>
+            </div>
+            <div class="node audit">
+              <strong>監査 / 監視</strong>
+              <span>ログ、メトリクス、アラート、操作履歴、証跡保管。</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-mesh" aria-label="マルチエージェントの役割分担">
+          <div class="agent-card">
+            <strong>Supervisor Agent</strong>
+            <span>全Agentの進行、品質、停止判断を監督し、危険な処理はOrchestratorへ差し戻します。</span>
+          </div>
+          <div class="agent-card">
+            <strong>Planner Agent</strong>
+            <span>依頼を小さなタスクに分解し、必要な専門AgentとTool候補を決めます。</span>
+          </div>
+          <div class="agent-card">
+            <strong>Research Agent</strong>
+            <span>RAGと社内検索を担当し、回答根拠と参照元を集めます。</span>
+          </div>
+          <div class="agent-card">
+            <strong>Action Agent</strong>
+            <span>MCP経由で業務SaaSの下書き作成や状態確認を担当します。</span>
+          </div>
+          <div class="agent-card">
+            <strong>Review Agent</strong>
+            <span>ポリシー違反、PII、承認要否、出力品質を実行前に検査します。</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="flow-title">
+        <div class="section-header">
+          <div class="section-title">
+            <h2 id="flow-title">実行フロー図</h2>
+            <p>質問回答で終わる処理と、業務システムを変更する処理を途中で分岐します。</p>
+          </div>
+          <span class="badge">操作は承認後</span>
+        </div>
+
+        <div class="flow" aria-label="AIエージェントの実行フロー">
+          <div class="step"><span class="num">1</span><strong>入力受付</strong><span>社員の依頼を受ける</span></div>
+          <div class="step"><span class="num">2</span><strong>意図判定</strong><span>質問か操作か分類</span></div>
+          <div class="step"><span class="num">3</span><strong>Supervisor判定</strong><span>難易度、リスク、停止条件を決める</span></div>
+          <div class="step"><span class="num">4</span><strong>Agent分担</strong><span>Plannerが担当Agentを選ぶ</span></div>
+          <div class="step"><span class="num">5</span><strong>権限確認</strong><span>RBAC / ABACを照合</span></div>
+          <div class="step"><span class="num">6</span><strong>情報検索</strong><span>Research AgentがRAGで根拠を取得</span></div>
+          <div class="step"><span class="num">7</span><strong>MCP Tool選定</strong><span>許可Toolとスキーマを候補化</span></div>
+          <div class="step"><span class="num">8</span><strong>実行前チェック</strong><span>Review Agentが危険操作とPIIを検査</span></div>
+          <div class="step"><span class="num">9</span><strong>人間承認</strong><span>approval_requiredで停止</span></div>
+          <div class="step"><span class="num">10</span><strong>実行</strong><span>Action AgentがMCP経由で操作</span></div>
+          <div class="step"><span class="num">11</span><strong>結果統合</strong><span>Supervisorが回答と操作結果を確認</span></div>
+          <div class="step"><span class="num">12</span><strong>監査ログ保存</strong><span>根拠と結果を記録</span></div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="guard-title">
+        <div class="section-header">
+          <div class="section-title">
+            <h2 id="guard-title">本番ガードレール</h2>
+            <p>AIの賢さより先に、実行境界・データ保護・説明責任を固定します。</p>
+          </div>
+          <span class="badge">安全境界</span>
+        </div>
+
+        <div class="guardrails">
+          <article class="guard">
+            <h3>認可: RBAC / ABAC</h3>
+            <p>役職、部署、勤務地、案件担当などを使って、見られる情報と実行できる操作を分けます。</p>
+            <ul>
+              <li>一般社員は自分の申請だけ閲覧</li>
+              <li>経理担当は部門横断で確認</li>
+              <li>管理者のみポリシー変更</li>
+            </ul>
+          </article>
+
+          <article class="guard">
+            <h3>Tool境界: allowlist / blocklist</h3>
+            <p>LLMへ渡すToolを毎回絞り込み、危険なToolは呼び出し候補に入れません。</p>
+            <ul>
+              <li>許可: search_policy, draft_ticket</li>
+              <li>制限: send_email, update_record</li>
+              <li>禁止: raw_data_export</li>
+            </ul>
+          </article>
+
+          <article class="guard">
+            <h3>MCP境界: Tool仕様の標準化</h3>
+            <p>MCP ServerごとにTool名、入力スキーマ、認証、許可範囲を固定し、Agentが勝手に接続先を増やせないようにします。</p>
+            <ul>
+              <li>Tool schemaを事前登録</li>
+              <li>接続先ごとに権限分離</li>
+              <li>入出力を監査ログへ保存</li>
+            </ul>
+          </article>
+
+          <article class="guard">
+            <h3>Agent境界: 役割分担と相互レビュー</h3>
+            <p>Supervisor、Planner、Research、Action、Reviewを分け、実行担当Agentの判断をReview AgentとSupervisor Agentが確認します。</p>
+            <ul>
+              <li>単独Agentに全権限を持たせない</li>
+              <li>操作前に別Agentが検査</li>
+              <li>Supervisorが停止・差し戻しを判断</li>
+            </ul>
+          </article>
+
+          <article class="guard">
+            <h3>監督: Supervisor Agent</h3>
+            <p>専門Agentの出力を統合し、根拠不足、権限不足、危険操作、品質不足があれば実行を止めます。</p>
+            <ul>
+              <li>高リスク処理は人間承認へ昇格</li>
+              <li>Agent間の矛盾を検出</li>
+              <li>最終回答の品質を確認</li>
+            </ul>
+          </article>
+
+          <article class="guard">
+            <h3>承認: approval_required</h3>
+            <p>作成、送信、更新、削除など副作用のある操作は、人間承認を待ってから実行します。</p>
+            <ul>
+              <li>回答のみなら即時返答</li>
+              <li>下書き作成は承認待ち</li>
+              <li>本番更新は二重承認</li>
+            </ul>
+          </article>
+
+          <article class="guard">
+            <h3>データ保護: PIIマスキング</h3>
+            <p>個人情報、顧客情報、給与、口座番号などは、検索結果とLLM入力の前に必要最小限へ加工します。</p>
+            <ul>
+              <li>氏名やメールを伏せ字化</li>
+              <li>不要な列は渡さない</li>
+              <li>出力前にも再検査</li>
+            </ul>
+          </article>
+
+          <article class="guard">
+            <h3>安定運用: rate limit</h3>
+            <p>大量実行や異常な連続操作を止め、LLM費用と業務SaaSの負荷を制御します。</p>
+            <ul>
+              <li>ユーザー単位の上限</li>
+              <li>Tool単位の上限</li>
+              <li>異常時の自動停止</li>
+            </ul>
+          </article>
+
+          <article class="guard">
+            <h3>説明責任: 監査ログ</h3>
+            <p>誰が、いつ、何を依頼し、どの根拠で、どのToolを実行したかを保存します。</p>
+            <ul>
+              <li>プロンプトと検索根拠</li>
+              <li>承認者と承認時刻</li>
+              <li>Tool入力と実行結果</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="scenario-title">
+        <div class="section-header">
+          <div class="section-title">
+            <h2 id="scenario-title">デモシナリオ: 経費精算ルールの確認とチケット下書き</h2>
+            <p>質問回答で終わる場合と、業務操作へ進む場合の違いを見せます。</p>
+          </div>
+          <span class="badge">説明用ストーリー</span>
+        </div>
+
+        <div class="scenario">
+          <div class="dialogue" aria-label="デモ会話">
+            <div class="bubble user">
+              <strong>社員</strong>
+              <p>出張先で使ったタクシー代は経費精算できますか？必要なら申請チケットも作ってください。</p>
+            </div>
+            <div class="bubble agent">
+              <strong>AIエージェント</strong>
+              <p>Research Agentが社内規程を検索しました。深夜移動または公共交通機関がない場合は精算対象です。領収書が必要です。</p>
+            </div>
+            <div class="bubble approval">
+              <strong>承認待ち</strong>
+              <p>Action AgentがMCP経由でチケット下書きを作成する前に、Review AgentがPIIと権限を確認し、Supervisor Agentが最終リスクを判定してから承認者へ回します。</p>
+            </div>
+          </div>
+
+          <div class="decision-table" aria-label="実行判断テーブル">
+            <table>
+              <thead>
+                <tr>
+                  <th>判断対象</th>
+                  <th>本番での扱い</th>
+                  <th>理由</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>経費ルール検索</td>
+                  <td><span class="status ok">即時実行</span></td>
+                  <td>閲覧権限のある社内規程をRAGで検索するだけなので副作用がありません。</td>
+                </tr>
+                <tr>
+                  <td>個人情報を含む証憑</td>
+                  <td><span class="status block">マスキング</span></td>
+                  <td>氏名、電話番号、カード番号などはLLMに渡す前に削除または伏せ字にします。</td>
+                </tr>
+                <tr>
+                  <td>チケット下書き</td>
+                  <td><span class="status wait">承認待ち</span></td>
+                  <td>Action AgentがMCP経由で業務SaaSへ書き込む操作なので、approval_requiredで人間承認を挟みます。</td>
+                </tr>
+                <tr>
+                  <td>本番データ更新</td>
+                  <td><span class="status block">直接禁止</span></td>
+                  <td>LLM判断だけで更新しない。Supervisor Agentが高リスク扱いにし、Tool Gatewayと二重承認を通します。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="legend" aria-label="デモで説明する観点">
+          <div class="legend-item"><strong>認証/認可</strong>誰の依頼か、何を許可するかを先に確認。</div>
+          <div class="legend-item"><strong>RAG</strong>回答は社内規程や過去ナレッジを根拠にする。</div>
+          <div class="legend-item"><strong>MCP</strong>Tool接続、認証、入出力スキーマを標準化する。</div>
+          <div class="legend-item"><strong>Supervisor Agent</strong>全体進行、停止判断、最終品質を監督する。</div>
+          <div class="legend-item"><strong>マルチエージェント</strong>監督、調査、実行、レビューを分けて暴走を防ぐ。</div>
+          <div class="legend-item"><strong>Tool実行前チェック</strong>危険操作、PII、権限不足を実行前に止める。</div>
+          <div class="legend-item"><strong>監視/アラート</strong>失敗率、遅延、異常操作、コスト増加を検知。</div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="live-demo-title">
+        <div class="section-header">
+          <div class="section-title">
+            <h2 id="live-demo-title">実働デモ</h2>
+            <p>Supervisorの判断、専門Agent、MCP Tool、承認ゲート、監査ログを実際に動かします。</p>
+          </div>
+          <span class="badge">ローカル実行</span>
+        </div>
+
+        <div class="demo-layout">
+          <div class="demo-control">
+            <div class="runtime-status"><span id="runtime-dot" class="runtime-dot"></span><span id="runtime-label">サーバー確認中</span></div>
+            <label for="agent-input">社員からの依頼</label>
+            <textarea id="agent-input">出張先で使ったタクシー代は経費精算できますか？必要なら申請チケットも作ってください。</textarea>
+            <div class="demo-actions">
+              <button id="run-button" class="demo-button" type="button">Agentを実行</button>
+              <button id="approve-button" class="demo-button secondary" type="button" disabled>承認して続行</button>
+            </div>
+          </div>
+
+          <div class="demo-output" aria-live="polite">
+            <div id="run-summary" class="run-summary">「Agentを実行」を押すと、各Agentの処理がここに表示されます。</div>
+            <ul id="source-list" class="source-list"></ul>
+            <div id="run-timeline" class="run-timeline"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script>
+      const runButton = document.querySelector("#run-button");
+      const approveButton = document.querySelector("#approve-button");
+      const input = document.querySelector("#agent-input");
+      const summary = document.querySelector("#run-summary");
+      const timeline = document.querySelector("#run-timeline");
+      const sources = document.querySelector("#source-list");
+      const runtimeDot = document.querySelector("#runtime-dot");
+      const runtimeLabel = document.querySelector("#runtime-label");
+      let currentRunId = null;
+
+      function render(run) {
+        currentRunId = run.id;
+        const waiting = run.status === "awaiting_approval";
+        summary.textContent = waiting
+          ? `${run.answer} 現在はチケット作成の承認待ちです。`
+          : run.ticket
+            ? `${run.answer} チケット ${run.ticket.id} を下書き作成しました。`
+            : run.answer;
+        sources.replaceChildren(...(run.sources || []).map((source) => {
+          const item = document.createElement("li");
+          item.textContent = `根拠: ${source.id} ${source.title}`;
+          return item;
+        }));
+        timeline.replaceChildren(...run.timeline.map((event) => {
+          const row = document.createElement("div");
+          row.className = "run-event";
+          const agent = document.createElement("strong");
+          agent.textContent = event.agent;
+          const message = document.createElement("span");
+          message.textContent = event.message;
+          row.append(agent, message);
+          return row;
+        }));
+        approveButton.disabled = !waiting;
+      }
+
+      async function request(url, options) {
+        const response = await fetch(url, options);
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || "処理に失敗しました");
+        return body;
+      }
+
+      async function checkRuntime() {
+        try {
+          const health = await request("/api/health");
+          runtimeDot.className = "runtime-dot online";
+          runtimeLabel.textContent = `稼働中: MCP ${health.mcp} / Agent ${health.agents}体`;
+          runButton.disabled = false;
+        } catch {
+          runtimeDot.className = "runtime-dot offline";
+          runtimeLabel.textContent = "未接続: npm startでサーバーを起動してください";
+          runButton.disabled = true;
+        }
+      }
+
+      runButton.addEventListener("click", async () => {
+        runButton.disabled = true;
+        summary.textContent = "Supervisor Agentが依頼を確認しています...";
+        timeline.replaceChildren();
+        try {
+          render(await request("/api/runs", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ input: input.value, user: { id: "employee-001", role: "employee", department: "sales" } })
+          }));
+        } catch (error) {
+          summary.textContent = error.message;
+        } finally {
+          runButton.disabled = false;
+        }
+      });
+
+      approveButton.addEventListener("click", async () => {
+        approveButton.disabled = true;
+        try {
+          render(await request(`/api/runs/${currentRunId}/approve`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ approver: "demo-manager" })
+          }));
+        } catch (error) {
+          summary.textContent = error.message;
+        }
+      });
+
+      checkRuntime();
+    </script>
+  </body>
+</html>
