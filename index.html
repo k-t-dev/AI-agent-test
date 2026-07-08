@@ -1,4 +1,10 @@
 <!doctype html>
+<!--
+  用途: ログイン、Agent実行、承認キュー、システム設計図を提供する単一ページUI。
+  必要な理由: 初学者が画面とバックエンドの流れを1ファイルで追え、外部フロントエンド依存を増やさないため。
+  関連ファイル: main.pyがこのHTMLを配信し、JavaScriptからmain.pyの/api/* Endpointを呼ぶ。
+               Agent設定はconfig/agents.yml、ログイン権限はconfig/users.ymlが元になる。
+-->
 <html lang="ja">
   <head>
     <meta charset="utf-8">
@@ -1217,6 +1223,7 @@
       </section>
     </main>
     <script>
+      // FastAPIと同一オリジンで通信し、セッション復元、CSRF付き更新、承認再開を制御する。
       const runButton = document.querySelector("#run-button");
       const approveButton = document.querySelector("#approve-button");
       const input = document.querySelector("#agent-input");
@@ -1253,6 +1260,7 @@
       }
 
       function render(run) {
+        // Agentの回答、根拠、各Agentの処理履歴、承認要否を安全なDOM APIで描画する。
         currentRunId = run.id;
         const waiting = run.status === "awaiting_approval";
         summary.textContent = waiting
@@ -1279,6 +1287,7 @@
       }
 
       async function loadApprovals() {
+        // API側でtenantとapproval scopeを絞り込んだ承認待ちだけを表示する。
         const rows = await request("/api/approvals");
         approvalQueue.replaceChildren(...rows.map((row) => {
           const item = document.createElement("div");
@@ -1300,6 +1309,7 @@
       }
 
       async function request(url, options) {
+        // HttpOnly Cookieはブラウザに任せ、401時は認証情報を破棄してログイン画面へ戻す。
         const response = await fetch(url, { credentials: "same-origin", ...options });
         const body = await response.json();
         if (!response.ok) {
@@ -1342,6 +1352,7 @@
       });
 
       async function checkRuntime() {
+        // OpenAIキー、MCP台数、Agent数を確認し、実行可能な場合だけ操作を有効化する。
         try {
           const health = await request("/api/health");
           runtimeDot.className = "runtime-dot online";

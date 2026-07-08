@@ -1,3 +1,15 @@
+"""設定ファイルの安全な境界を確認するテスト。
+
+用途:
+    MCPのTool分離、承認対象、接続先の分離、ダミーAPIキー判定を確認する。
+必要な理由:
+    YAMLの編集だけで危険Toolが誤公開される事故を、起動前に検出するため。
+関連ファイル:
+    ``app/config.py`` が読み込む ``config/agents.yml`` を対象にする。
+"""
+
+import os
+
 from app.config import get_settings
 
 
@@ -22,4 +34,15 @@ def test_mcp_servers_are_isolated() -> None:
 
 
 def test_dummy_key_is_not_usable() -> None:
-    assert get_settings().has_usable_api_key is False
+    """実キーを表示・変更せず、ダミー値だけが利用不可になることを確認する。"""
+    original = os.environ.get("OPENAI_API_KEY")
+    try:
+        os.environ["OPENAI_API_KEY"] = "test-only-dummy-key-not-valid"
+        get_settings.cache_clear()
+        assert get_settings().has_usable_api_key is False
+    finally:
+        if original is None:
+            os.environ.pop("OPENAI_API_KEY", None)
+        else:
+            os.environ["OPENAI_API_KEY"] = original
+        get_settings.cache_clear()

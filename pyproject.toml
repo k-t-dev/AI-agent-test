@@ -1,3 +1,6 @@
+# 用途: Pythonバージョン、必要ライブラリ、パッケージ対象、テスト設定を管理する。
+# 必要な理由: 手作業でのpip導入差をなくし、同じ依存関係でAPI・Agent・MCPを再現するため。
+# 関連ファイル: DockerfileとREADMEのpip installが参照し、appパッケージとtestsを実行可能にする。
 [project]
 name = "production-ai-agent"
 version = "1.0.0"

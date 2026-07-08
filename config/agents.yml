@@ -1,3 +1,6 @@
+# 用途: Agent、MCP接続、Tool境界、認証、運用制限をまとめる設定ファイル。
+# 必要な理由: 環境や運用方針の変更を、Pythonロジックの書き換えなしで行うため。
+# 関連ファイル: app/config.pyが読み込み、main.py、app/agent_service.py、両MCPサーバーへ配る。
 application:
   name: enterprise-ai-agent
   environment: ${APP_ENV:-development}
@@ -19,6 +22,7 @@ openai:
 
 mcp:
   servers:
+    # 読み取り系と更新系を別プロセス・別権限へ分離する。
     knowledge:
       server_name: knowledge-tools
       url: ${KNOWLEDGE_MCP_URL:-http://127.0.0.1:8790/mcp}
@@ -46,6 +50,7 @@ mcp:
           - draft_ticket
 
 agents:
+  # 各Agentの責務を狭くし、Supervisorだけが処理を振り分ける。
   supervisor:
     name: Supervisor Agent
     instructions: |
@@ -69,6 +74,7 @@ agents:
       回答と操作計画をレビューし、PII、根拠不足、権限不足、未承認の更新操作を検出してください。
 
 security:
+  # API入口で使うRBAC、rate limit、監査保持、承認roleの共通ポリシー。
   default_role: employee
   permitted_roles:
     - employee

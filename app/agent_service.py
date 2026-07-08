@@ -1,3 +1,15 @@
+"""OpenAI Agents SDKを使うAgent実行サービス。
+
+用途:
+    Supervisorと専門Agentを構築し、MCP接続、承認中断、保存したRunStateの再開を管理する。
+必要な理由:
+    HTTP処理とAIの実行制御を分離し、Agentの役割・承認・接続終了を一貫して扱うため。
+関連ファイル:
+    ``main.py`` から呼ばれ、``app/config.py`` のYAML設定でAgentを組み立てる。
+    ``app/auth.py`` でMCP用トークンを作り、``mcp_knowledge_server.py`` と
+    ``mcp_ticket_server.py`` へ接続する。承認待ちは ``app/storage.py`` で保存する。
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,17 +28,20 @@ from app.storage import JsonStore
 
 @dataclass
 class AgentRuntime:
+    """1回のAgent実行で共有するSupervisorと接続対象MCPサーバー。"""
     supervisor: Agent
     mcp_servers: list[MCPServerStreamableHttp]
 
 
 class AgentService:
+    """OpenAI Agents SDKの実行ライフサイクルと監査証跡を管理する。"""
     def __init__(self, settings: Settings, store: JsonStore) -> None:
         self.settings = settings
         self.store = store
         self.auth = AuthManager(settings)
 
     def _resolve_mcp_meta(self, context: MCPToolMetaContext) -> dict[str, str] | None:
+        """信頼済みRun Contextを短寿命MCP認証トークンへ変換する。"""
         run_context = context.run_context.context or {}
         user = run_context.get("user")
         if not user:
@@ -34,6 +49,7 @@ class AgentService:
         return {"auth_token": self.auth.issue_mcp_token(user, run_context.get("run_id"))}
 
     def _runtime(self) -> AgentRuntime:
+        """YAML設定から分離されたMCPとSupervisor・専門Agentを毎実行生成する。"""
         cfg = self.settings
         servers: dict[str, MCPServerStreamableHttp] = {}
         for server_id, server_cfg in cfg.mcp.servers.items():
@@ -76,6 +92,7 @@ class AgentService:
         return AgentRuntime(supervisor=supervisor, mcp_servers=list(servers.values()))
 
     async def _connect(self, runtime: AgentRuntime) -> None:
+        """全MCPへ接続し、途中失敗時は接続済みサーバーを逆順で閉じる。"""
         connected: list[MCPServerStreamableHttp] = []
         try:
             for server in runtime.mcp_servers:
@@ -87,10 +104,12 @@ class AgentService:
             raise
 
     async def _cleanup(self, runtime: AgentRuntime) -> None:
+        """利用したMCP接続を逆順で安全に閉じる。"""
         for server in reversed(runtime.mcp_servers):
             await server.cleanup()
 
     async def start(self, user_input: str, user: dict[str, str]) -> dict[str, Any]:
+        """新規依頼を実行し、更新ToolがあればRunStateを永続化して承認待ちにする。"""
         run_id = str(uuid4())
         safe_input = mask_pii(user_input)
         self.store.audit(run_id, "Supervisor Agent", "accepted", {"user": user, "input": safe_input})
@@ -139,6 +158,7 @@ class AgentService:
             raise
 
     async def approve(self, run_id: str, approver: dict[str, Any]) -> dict[str, Any]:
+        """tenant一致を確認し、保存済みRunStateへ承認判断を適用して再開する。"""
         pending = next((row for row in self.store.read("pending_runs.json") if row["runId"] == run_id), None)
         if not pending:
             raise KeyError("承認待ちの実行がありません")

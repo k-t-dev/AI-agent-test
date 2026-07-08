@@ -1,3 +1,7 @@
+# 用途: ローカル確認で使うユーザーとrole・部署・scopeを定義する。
+# 必要な理由: パスワードを平文保存せず、ユーザー入力ではなく管理済み属性で認可を試すため。
+# 関連ファイル: app/auth.pyが読み、main.pyのログインとMCPのRBAC/ABAC判断へつなぐ。
+# 本番ではこのファイルを企業のOIDC/SSOとID管理基盤へ置き換える。
 users:
   - id: employee-001
     email: employee@example.com

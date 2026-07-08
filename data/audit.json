@@ -252,5 +252,27 @@
     "detail": {
       "message": "draft_ticketは副作用があるため、人間承認まで実行を停止しました。"
     }
+  },
+  {
+    "id": "0a461d31-888d-462a-b413-42dc9927664b",
+    "at": "2026-07-04T08:39:52.655450+00:00",
+    "runId": "auth",
+    "actor": "employee-001",
+    "event": "login_succeeded",
+    "detail": {
+      "role": "employee",
+      "tenantId": "acme-jp"
+    }
+  },
+  {
+    "id": "866295ac-c2c6-4d39-9a1c-db5c4e387f2e",
+    "at": "2026-07-04T08:40:23.586149+00:00",
+    "runId": "auth",
+    "actor": "employee-001",
+    "event": "login_succeeded",
+    "detail": {
+      "role": "employee",
+      "tenantId": "acme-jp"
+    }
   }
 ]

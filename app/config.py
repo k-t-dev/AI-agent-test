@@ -1,3 +1,14 @@
+"""YAMLと環境変数をPythonから安全に使える設定へ変換するモジュール。
+
+用途:
+    ``config/agents.yml`` を読み、Pydanticで型と必須項目を検証してSettingsを返す。
+必要な理由:
+    Agent名、MCP URL、Tool権限をコードへ散在させず、環境ごとに安全に変更するため。
+関連ファイル:
+    ``main.py``、``app/agent_service.py``、両MCPサーバーが同じSettingsを共有する。
+    ローカルの秘密値はGit管理外の ``.env.local`` から読み、項目例は ``.env.example`` に置く。
+"""
+
 from __future__ import annotations
 
 import os
@@ -14,6 +25,7 @@ ENV_PATTERN = re.compile(r"\$\{([A-Z0-9_]+)(?::-([^}]*))?}")
 
 
 def load_local_env() -> None:
+    """ローカル開発用envファイルを既存環境変数を上書きせず読み込む。"""
     for filename in (".env.local", ".env"):
         path = ROOT / filename
         if not path.exists():
@@ -26,6 +38,7 @@ def load_local_env() -> None:
 
 
 def _expand(value: Any) -> Any:
+    """YAML内の${NAME:-default}表記を再帰的に環境変数展開する。"""
     if isinstance(value, dict):
         return {key: _expand(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -105,6 +118,7 @@ class Settings(BaseModel):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    """検証済み設定をプロセス内で1回だけ生成し再利用する。"""
     load_local_env()
     raw = yaml.safe_load((ROOT / "config" / "agents.yml").read_text(encoding="utf-8"))
     settings = Settings.model_validate(_expand(raw))

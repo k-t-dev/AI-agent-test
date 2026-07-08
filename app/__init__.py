@@ -1,2 +1,9 @@
-"""Production-oriented AI agent application."""
+"""アプリケーション共通コードをPythonパッケージとして扱うための印。
 
+用途:
+    ``app`` ディレクトリをimport可能なパッケージにする。
+必要な理由:
+    ``main.py`` や2つのMCPサーバーから、認証・設定・保存処理を重複なく共有するため。
+関連ファイル:
+    ``app/config.py``、``app/auth.py``、``app/agent_service.py`` などを同じ名前空間にまとめる。
+"""

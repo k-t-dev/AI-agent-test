@@ -1,3 +1,15 @@
+"""承認が必要なチケット更新だけを担当するTicket MCPサーバー。
+
+用途:
+    ``draft_ticket`` Toolを公開し、本人・tenant・部署をサーバー側で付けて下書きを保存する。
+必要な理由:
+    副作用のある更新操作をKnowledge MCPから隔離し、人間承認なしの書き込みを防ぐため。
+関連ファイル:
+    ``app/agent_service.py`` のAction Agentから接続され、Agents SDKの承認後だけ呼び出される。
+    ``app/mcp_identity.py`` でscopeを再検証し、``app/storage.py`` 経由で
+    ``data/tickets.json`` と監査ログへ保存する。
+"""
+
 from __future__ import annotations
 
 import json
@@ -28,7 +40,11 @@ mcp = FastMCP(
 
 @mcp.tool()
 def draft_ticket(title: str, description: str, ctx: Context) -> str:
-    """承認後に経費申請チケットの下書きを作る更新Tool。呼び出し側で必ず人間承認を要求する。"""
+    """承認後に経費申請チケットの下書きを作成する。
+
+    Agents SDK側でHuman-in-the-loop承認を通過した呼び出しだけを想定する更新Tool。MCP側でも署名と
+    ticket:draft scopeを再検証し、ownerId、tenantId、departmentはモデル入力ではなくclaimsから設定する。
+    """
     claims = authorized_claims(ctx, auth, "ticket:draft")
     ticket = {
         "id": f"EXP-{str(uuid4())[:8].upper()}",

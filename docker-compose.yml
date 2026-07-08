@@ -1,5 +1,9 @@
+# 用途: API、Knowledge MCP、Ticket MCPを別コンテナでまとめて起動する。
+# 必要な理由: 読み取りと更新の障害・権限・ポートを分離し、本番に近い接続をローカルで再現するため。
+# 関連ファイル: Dockerfileから共通イメージを作り、main.pyと2つのmcp_*_server.pyを個別に起動する。
 services:
   knowledge-mcp:
+    # 社内規程検索だけを公開する読み取り専用境界。
     build: .
     command: python mcp_knowledge_server.py
     environment:
@@ -12,6 +16,7 @@ services:
     restart: unless-stopped
 
   ticket-mcp:
+    # Human approval後のチケット下書きだけを公開する更新境界。
     build: .
     command: python mcp_ticket_server.py
     environment:
@@ -24,6 +29,7 @@ services:
     restart: unless-stopped
 
   api:
+    # JavaScript UI、ログイン、RBAC/ABAC、Agent実行、承認APIを提供する入口。
     build: .
     command: python main.py
     env_file:

@@ -1,3 +1,13 @@
+"""認証処理を壊していないか確認するテスト。
+
+用途:
+    ログイン、UIセッション、MCPトークン、scope不足時の拒否を確認する。
+必要な理由:
+    認証の不具合はデータ漏えいへ直結するため、画面確認だけでなく自動検証する必要がある。
+関連ファイル:
+    ``app/auth.py`` を対象に、``config/users.yml`` と ``config/agents.yml`` の設定を使って検証する。
+"""
+
 from app.auth import AuthManager
 from app.config import get_settings
 
@@ -40,4 +50,3 @@ def test_scope_check_fails_closed() -> None:
         pass
     else:
         raise AssertionError("missing scope must be rejected")
-

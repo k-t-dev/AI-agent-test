@@ -1,3 +1,14 @@
+"""JSONファイルへの保存をまとめるデモ用ストレージ層。
+
+用途:
+    規程、チケット、承認待ちRunState、監査ログを読み書きし、同時書き込みをLockで保護する。
+必要な理由:
+    AgentやMCPが保存形式を直接扱わず、append・upsert・deleteの動作を一か所へ集約するため。
+関連ファイル:
+    ``main.py`` と ``app/agent_service.py`` が監査・承認状態を保存し、両MCPサーバーが
+    ``data/*.json`` を読み書きする。本番ではこの層をPostgreSQL等へ置き換える想定。
+"""
+
 from __future__ import annotations
 
 import json
@@ -9,6 +20,7 @@ from uuid import uuid4
 
 
 class JsonStore:
+    """JSON配列ファイルのread、append、upsert、delete、audit操作をまとめる。"""
     def __init__(self, data_dir: Path, audit_retention: int = 5000) -> None:
         self.data_dir = data_dir
         self.audit_retention = audit_retention
